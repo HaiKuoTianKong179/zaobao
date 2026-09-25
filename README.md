@@ -1,0 +1,33 @@
+# 懂球帝早报网页化阅读工具
+
+把懂球帝 APP 专用的早报文章转换成浏览器可直接阅读、新闻可直接点开的网页。
+
+## 用法
+
+```bash
+pip install -r requirements.txt
+python zaobao.py        # 或 python app.py
+```
+
+启动后自动打开浏览器进入 `http://127.0.0.1:5000`:选日期 → 打开早报,
+程序按设备 User-Agent 自动选择电脑版/手机版转换,自动跳转阅读页。
+生成文件保存在 `output/` 下(URL 里显式传 `version=pc|mobile` 可覆盖自动判定)。
+
+Windows 7 / Python 3.8 与 Android Termux(`pkg install python` 后同上)均可运行。
+
+## 原理(基于 2026-09 实测)
+
+- 专题页 `dongqiudi.com/special/48` 是 Nuxt 渲染,文章列表在
+  `window.__NUXT__` JS 数据块里(字段 `title` / `aid` / `show_time`),
+  用正则配对提取;文章地址即 `articles/{aid}.html`。
+- 早报正文里的新闻跳转实际形如 `dongqiudi:///news/{id}`
+  (任务书假设的 `dongqiudi://article?id=` 一并支持),且同时出现在
+  `<a href>` 和 NUXT 数据里——浏览器水合会用后者重建 DOM,所以必须
+  整份 HTML 文本替换(含 `\u002F`、`\/` 转义形态),只改 href 会被还原。
+- 页面样式由懂球帝的 JS 动态注入,因此阅读页保留原脚本,并注入
+  `<base href="https://www.dongqiudi.com/">` 让相对路径资源回源加载,
+  实测排版与原站一致、链接转换在水合后依然生效。
+- 按任务书要求只改新闻文章链接;作者/球队等 `dongqiudi:///user|team`
+  链接保持原样(早报页通常剩 1 个作者链接)。
+- 版本在 `/open` 处理时按请求 UA 判定(Mobile/Android/iPhone 等 → 手机版,
+  其余 → 电脑版),因此在哪个设备上点开就按哪个设备转换。
