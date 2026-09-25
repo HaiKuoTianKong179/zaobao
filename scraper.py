@@ -25,6 +25,12 @@ HEADERS = {
 }
 TIMEOUT = 15
 
+# 懂球帝是国内站,直连即可。无视系统/环境变量里的代理设置:
+# Windows 系统代理经 Python 解析会给 https 协议配上 "https://" 前缀,
+# 导致对代理发起 TLS 连接而失败(实测报 ProxyError)。
+_session = requests.Session()
+_session.trust_env = False
+
 # 同一条目内: title:"..." ... aid:"123" ... show_time:1695600000
 # 标题里的转义引号用 (?:[^"\\]|\\.) 跳过;aid 与 show_time 之间限制距离,
 # 防止跨条目配对。
@@ -52,7 +58,7 @@ def _unescape(text):
 def _get(url):
     # type: (str) -> str
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp = _session.get(url, headers=HEADERS, timeout=TIMEOUT)
     except requests.RequestException as exc:
         raise ScrapeError("网络请求失败:%s" % exc)
     if resp.status_code != 200:
