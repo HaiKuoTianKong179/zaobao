@@ -43,6 +43,9 @@ _ITEM_RE = re.compile(
 
 _UNESCAPE_RE = re.compile(r"\\u([0-9a-fA-F]{4})")
 
+# 文章页 og meta:<meta ... property="article:published_time" content="2026-09-27 07:00">
+_PUB_DATE_RE = re.compile(r'published_time[^>]*content="(\d{4}-\d{2}-\d{2})')
+
 
 class ScrapeError(Exception):
     """抓取/解析失败,消息可直接展示给用户。"""
@@ -115,6 +118,13 @@ def find_report_by_date(date):
         if report["date"] == date:
             return report
     raise ScrapeError("没有找到 %s 的早报,请返回选择页重选日期" % date)
+
+
+def extract_article_date(html):
+    # type: (str) -> Optional[str]
+    """从文章页 HTML 提取发布日期(YYYY-MM-DD),取不到返回 None。"""
+    m = _PUB_DATE_RE.search(html)
+    return m.group(1) if m else None
 
 
 def fetch_article_html(aid):

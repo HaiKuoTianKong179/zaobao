@@ -28,6 +28,12 @@
     font-size: 13px; color: #666; background: #eef4f0;
     border-radius: 8px; padding: 9px 12px; margin-top: 18px;
   }
+  .aid-row { margin-top: 14px; }
+  .aid-row input {
+    width: 100%; border: 1px solid #ccc; border-radius: 8px;
+    padding: 9px 12px; font-size: 15px;
+  }
+  .aid-row .tip { font-size: 12px; color: #999; margin-top: 4px; }
   button {
     display: block; width: 100%; margin-top: 24px;
     background: #16a13f; color: #fff; border: none; border-radius: 8px;
@@ -61,6 +67,11 @@
       {% endfor %}
     </div>
     <p class="hint">已根据设备自动选择:{{ "手机版" if version == "mobile" else "电脑版" }}</p>
+    <div class="aid-row">
+      <input type="text" name="aid" inputmode="numeric" pattern="\d*"
+             placeholder="文章号(选填,如 6403352)">
+      <p class="tip">列表里缺某期早报时,直接填文章号打开;平时留空即可</p>
+    </div>
     <button type="submit" id="go">打开早报</button>
   </form>
   {% endif %}

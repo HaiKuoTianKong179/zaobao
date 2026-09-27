@@ -31,6 +31,9 @@ Windows 7 / Python 3.8 与 Android Termux(`pkg install python` 后同上)均可�
   链接保持原样(早报页通常剩 1 个作者链接)。
 - 版本在 `/open` 处理时按请求 UA 判定(Mobile/Android/iPhone 等 → 手机版,
   其余 → 电脑版),因此在哪个设备上点开就按哪个设备转换。
+- 选择页支持直接填文章号(aid)打开:专题列表偶尔滞后于实际发布
+  (文章已出、列表未挂),此时按日期选不到,填文章号即可直达;
+  日期从文章页 `article:published_time` meta 自动提取。
 - 抓取始终直连懂球帝(会话 `trust_env=False`),无视系统/环境变量代理:
   Windows 系统代理被 Python 解析出 `https://` 前缀时会对代理发起 TLS,
   导致 ProxyError,直连则彻底绕开此坑。

@@ -7,6 +7,7 @@
 import os
 import re
 import threading
+from datetime import datetime
 
 from flask import Flask, Response, abort, redirect, render_template, request, url_for
 
@@ -55,8 +56,20 @@ def open_report():
     if version not in ("pc", "mobile"):
         version = _detect_version()
     try:
-        report = scraper.find_report_by_date(date)
-        html = scraper.fetch_article_html(report["aid"])
+        aid = request.args.get("aid", "").strip()
+        if aid:
+            # 直接按文章号处理(专题列表缺期时的后门);只允许纯数字,
+            # 防止把任意内容拼进上游 URL
+            if not re.match(r"^\d{1,12}$", aid):
+                return render_template(
+                    "read.html", error="文章号格式不正确,应为纯数字。"), 400
+            html = scraper.fetch_article_html(aid)
+            date = scraper.extract_article_date(html) or \
+                datetime.now().strftime("%Y-%m-%d")
+            report = {"aid": aid, "date": date}
+        else:
+            report = scraper.find_report_by_date(date)
+            html = scraper.fetch_article_html(report["aid"])
         converted, replaced = converter.convert(html, version)
     except scraper.ScrapeError as exc:
         return render_template("read.html", error=str(exc)), 502
