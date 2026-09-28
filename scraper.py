@@ -61,13 +61,25 @@ def _unescape(text):
 def _get(url):
     # type: (str) -> str
     try:
-        resp = _session.get(url, headers=HEADERS, timeout=TIMEOUT)
+        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
     except requests.RequestException as exc:
         raise ScrapeError("网络请求失败:%s" % exc)
     if resp.status_code != 200:
         raise ScrapeError("请求 %s 返回状态码 %s" % (url, resp.status_code))
     resp.encoding = "utf-8"
     return resp.text
+
+
+def fetch_raw(url):
+    # type: (str) -> tuple
+    """取回接口/资源原始内容,返回 (bytes, content_type);供 /api 代理用。"""
+    try:
+        resp = _session.get(url, headers=HEADERS, timeout=TIMEOUT)
+    except requests.RequestException as exc:
+        raise ScrapeError("网络请求失败:%s" % exc)
+    if resp.status_code != 200:
+        raise ScrapeError("请求 %s 返回状态码 %s" % (url, resp.status_code))
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 
 # 专题列表缓存:选择页与 /open 都要用,避免每次点击都重新抓专题页

@@ -9,8 +9,12 @@ JS 数据里——浏览器水合(hydration)时会用它重建 DOM,只改 href �
 覆盖回去。所以必须对整份 HTML 文本做替换;JS 字符串里的斜杠可能是
 \\u002F 或 \\/ 转义形态,三种形态都要匹配。
 
-页面最终从 127.0.0.1 提供,注入 <base> 让相对路径的图片/脚本/样式
-仍从懂球帝源站加载,保持原排版(实测样式由 Nuxt JS 动态注入,必须保留)。
+相对资源地址(如 /_nuxt/*.js)一律绝对化指向懂球帝源站:不能用
+<base> 标签实现同样效果——实测 base 会改变页面的"基地址",导致
+Nuxt 框架启动时路由推导失败、整个应用不挂载(点赞/分享/查看回复
+全部失灵);而资源绝对化后脚本跨域加载不受限,应用正常挂载。
+接口请求(fetch/XHR)是相对路径,落在本地服务上,由 app.py 的
+/api 代理路由转发,实现同源取数。
 """
 import re
 from typing import Tuple
@@ -19,7 +23,7 @@ from bs4 import BeautifulSoup
 
 PC_URL = "https://www.dongqiudi.com/articles/{id}.html"
 MOBILE_URL = "https://m.dongqiudi.com/article/{id}.html"
-BASE_HREF = "https://www.dongqiudi.com/"
+ORIGIN = "https://www.dongqiudi.com"
 
 # 一个斜杠的三种文本形态: / 、 \u002F 、 \/
 _SLASH = r"(?:/|\\u002[Ff]|\\/)"
@@ -27,12 +31,17 @@ _NEWS_RE = re.compile(
     "dongqiudi:" + _SLASH + _SLASH + "(?:" + _SLASH + ")?news" + _SLASH + r"(\d+)")
 _ARTICLE_RE = re.compile(
     "dongqiudi:" + _SLASH + _SLASH + r'article\?id=(\d+)')
-_BASE_RE = re.compile(r"(<head[^>]*>)")
+
+# 相对资源地址绝对化:src="/x" / href="/x"(单斜杠开头;双斜杠开头的是
+# 协议相对地址,本就是绝对地址,不动)
+_REL_SRC_RE = re.compile(r'(src|href)="/(?!/)')
+# 内联样式里的 url(/x)
+_REL_CSS_RE = re.compile(r'url\(/(?!/)')
 
 
 def convert(html, version="pc"):
     # type: (str, str) -> Tuple[str, int]
-    """替换全文 APP 链接并注入 <base>,返回 (新HTML, 替换数)。"""
+    """替换全文 APP 链接并把相对资源绝对化,返回 (新HTML, 替换数)。"""
     url_tpl = MOBILE_URL if version == "mobile" else PC_URL
 
     def repl(m):
@@ -40,8 +49,8 @@ def convert(html, version="pc"):
 
     html, n1 = _NEWS_RE.subn(repl, html)
     html, n2 = _ARTICLE_RE.subn(repl, html)
-    html = _BASE_RE.sub(
-        lambda m: m.group(1) + '<base href="%s">' % BASE_HREF, html, count=1)
+    html = _REL_SRC_RE.sub(lambda m: '%s="%s/' % (m.group(1), ORIGIN), html)
+    html = _REL_CSS_RE.sub(lambda m: 'url(%s/' % ORIGIN, html)
     return html, n1 + n2
 
 
