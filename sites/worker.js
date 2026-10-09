@@ -93,7 +93,7 @@ export default {
         if(!aid){const date=url.searchParams.get('date')||'';if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return failure('请选择有效日期。',400);const list=await reportsFor(env);aid=list.value.find(r=>r.date===date)?.aid;if(!aid)return failure('没有找到这一天的早报。若文章刚发布，可以使用文章号打开。',404);}
         const version=device(request,url.searchParams.get('version'));
         response=new Response(null,{status:302,headers:{Location:(version==='mobile' ? '/article/' : '/articles/')+aid+'.html?zb='+version,'Cache-Control':'no-store'}});
-      } else if(/^\/articles?\/\d{1,12}\.html$/.test(path)) {
+      } else if(/^\/articles?\/\d{1,12}(?:\.html)?$/.test(path)) {
         const aid=path.match(/\d+/)[0],version=device(request,url.searchParams.get('zb'));
         const article=await articleFor(env,aid,version);
         response=htmlResponse(article.value);response.headers.set('X-Zaobao-Cache',article.stale?'stale':'fresh');
