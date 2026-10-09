@@ -104,6 +104,11 @@ export default {
         const aid=path.match(/\d+/)[0],version=device(request,url.searchParams.get('zb'));
         const article=await articleFor(env,aid,version);
         response=htmlResponse(article.value);response.headers.set('X-Zaobao-Cache',article.stale?'stale':'fresh');
+      } else if(/^\/v2\/article\/(?:\d{1,12}\/hot|relative\/\d{1,12})$/.test(path)) {
+        if(url.search.length>2000)return new Response('Invalid query',{status:400});
+        const result=await upstream(path+url.search,'mobile');
+        if(!/^application\/json/i.test(result.type))return new Response('Unsupported upstream content',{status:502});
+        response=new Response(result.bytes,{headers:{'Content-Type':result.type,'X-Content-Type-Options':'nosniff','Cache-Control':'public, max-age=20'}});
       } else if(/^\/dist\/img\/[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+\.(png|jpe?g|gif|svg|webp|avif)$/.test(path)) {
         // Webpack generates these paths at runtime, outside HTML conversion.
         response=new Response(null,{status:302,headers:{Location:MOBILE_ORIGIN+path,'Cache-Control':'public, max-age=3600'}});
