@@ -64,7 +64,7 @@ async function cached(env,key,ttl,load) {
   pending.set(key,work);try{return await work;}finally{pending.delete(key);}
 }
 const reportsFor = env => cached(env,'reports.json',300000,async()=>parseReports(new TextDecoder().decode((await upstream('/special/48')).bytes)));
-const articleFor = (env,aid,version) => cached(env,'articles/v3/'+aid+'-'+version+'.json',1800000,async()=>convert(new TextDecoder().decode((await upstream((version==='mobile' ? '/article/' : '/articles/')+aid+'.html',version)).bytes),version));
+const articleFor = (env,aid,version) => cached(env,'articles/v4/'+aid+'-'+version+'.json',1800000,async()=>convert(new TextDecoder().decode((await upstream((version==='mobile' ? '/article/'+aid : '/articles/'+aid+'.html'),version)).bytes),version));
 function rateLimit(request) {
   const key=request.headers.get('CF-Connecting-IP') || 'local';const now=Date.now();
   if(localRate.size>5000)for(const [k,v]of localRate)if(v.until<now)localRate.delete(k);
@@ -104,6 +104,9 @@ export default {
         const aid=path.match(/\d+/)[0],version=device(request,url.searchParams.get('zb'));
         const article=await articleFor(env,aid,version);
         response=htmlResponse(article.value);response.headers.set('X-Zaobao-Cache',article.stale?'stale':'fresh');
+      } else if(/^\/dist\/img\/[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+\.(png|jpe?g|gif|svg|webp|avif)$/.test(path)) {
+        // Webpack generates these paths at runtime, outside HTML conversion.
+        response=new Response(null,{status:302,headers:{Location:MOBILE_ORIGIN+path,'Cache-Control':'public, max-age=3600'}});
       } else if(path.startsWith('/api/')||path.startsWith('/images/')) {
         if(path.length>300||url.search.length>2000||/%2f|%5c|\.\.|\\/i.test(path)||!/^\/(api|images)\/[a-zA-Z0-9_./%-]+$/.test(path))return new Response('Invalid path',{status:400});
         if(path.startsWith('/api/')&&/(login|logout|token|password|oauth|register|delete|remove|create|submit|publish|send|follow|unfollow|like|unlike)/i.test(path))return new Response('Unsupported API',{status:403});
