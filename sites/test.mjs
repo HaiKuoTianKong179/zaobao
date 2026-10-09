@@ -38,7 +38,7 @@ test('mobile articles fetch the mobile source and convert relative assets',async
   const response=await worker.fetch(new Request('https://example.test/article/123.html?zb=mobile'));
   const html=await response.text();
   assert.equal(response.status,200);
-  assert.equal(calls[0].url,'https://m.dongqiudi.com/article/123.html');
+  assert.equal(calls[0].url,'https://m.dongqiudi.com/article/123');
   assert.match(calls[0].options.headers['User-Agent'],/Mobile/);
   assert.ok(html.includes('https://m.dongqiudi.com/mobile.js'));
   assert.ok(html.includes('/article/456.html'));
@@ -56,7 +56,7 @@ test('article routes survive mobile URL normalization',async()=>{
    assert.equal(response.status,200,path);
    assert.match(await response.text(),/article content/);
   }
-  assert.deepEqual(calls,['https://m.dongqiudi.com/article/6441811.html','https://m.dongqiudi.com/article/6451239.html','https://www.dongqiudi.com/articles/6441811.html']);
+  assert.deepEqual(calls,['https://m.dongqiudi.com/article/6441811','https://m.dongqiudi.com/article/6451239','https://www.dongqiudi.com/articles/6441811.html']);
   assert.equal((await worker.fetch(new Request('https://example.test/article/6441811junk'))).status,404);
  }finally{globalThis.fetch=original;}
 });
@@ -70,4 +70,20 @@ test('mobile full text and linked news stay in the reader',()=>{
  assert.ok(html.includes('max-height:none!important'));
  assert.ok(html.includes('window.__INITIAL_STATE__.openFull=true'));
  assert.equal(convert(input,'pc'),input);
+});
+
+test('dynamic mobile image assets resolve to original source',async()=>{
+ const response=await worker.fetch(new Request('https://example.test/dist/img/dqd-icon.5153137.png'));
+ assert.equal(response.status,302);
+ assert.equal(response.headers.get('Location'),'https://m.dongqiudi.com/dist/img/dqd-icon.5153137.png');
+ assert.equal((await worker.fetch(new Request('https://example.test/dist/img/file.html'))).status,404);
+});
+test('real mobile source uses the new layout with full text enabled',async()=>{
+ const response=await worker.fetch(new Request('https://example.test/article/6458232?zb=mobile'));
+ assert.equal(response.status,200);
+ const html=await response.text();
+ assert.ok(html.includes('skin-tt'));
+ assert.ok(html.includes('tt-author'));
+ assert.ok(html.includes('window.__INITIAL_STATE__.openFull=true'));
+ assert.ok(html.includes('国安3-0'));
 });
