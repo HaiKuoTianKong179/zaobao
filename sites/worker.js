@@ -24,11 +24,18 @@ export function parseReports(html) {
 }
 export function convert(html, version) {
   const origin = version==='mobile' ? MOBILE_ORIGIN : ORIGIN;
-  const target = version==='mobile' ? 'https://m.dongqiudi.com/article/' : ORIGIN+'/articles/';
+  const target = version==='mobile' ? '/article/' : ORIGIN+'/articles/';
   const slash = '(?:/|\\\\u002[Ff]|\\\\/)';
   html = html.replace(new RegExp('dongqiudi:'+slash+slash+'(?:'+slash+')?news'+slash+'(\\d+)','g'),(_,id)=>target+id+'.html');
   html = html.replace(new RegExp('dongqiudi:'+slash+slash+'article\\?id=(\\d+)','g'),(_,id)=>target+id+'.html');
   html = html.replace(/(src|href)="\/(?!\/)/g,'$1="'+origin+'/').replace(/url\(\/(?!\/)/g,'url('+origin+'/');
+  if (version==='mobile') {
+    // Route news through this reader, including links stored in hydration data.
+    html = html.replace(new RegExp('https?:'+slash+slash+'(?:m|www)\\.dongqiudi\\.com'+slash+'articles?'+slash+'(\\d+)(?:\\.html)?','g'),(_,id)=>'/article/'+id+'.html?zb=mobile');
+    // The upstream already supplies the full body. Keep it visible after hydration.
+    const full = '<style id="zaobao-fulltext">.tt-fold.folded,article.show-more,article.show-more .con{height:auto!important;max-height:none!important;overflow:visible!important}.show-more-btn,.tt-fade,.tt-bar,.article-download-btn-container{display:none!important}</style><script>if(window.__INITIAL_STATE__)window.__INITIAL_STATE__.openFull=true;</script>';
+    html = html.replace('</body>',full+'</body>');
+  }
   // Keep the article pathname for Nuxt hydration; do not add a base tag.
   return html;
 }
@@ -57,7 +64,7 @@ async function cached(env,key,ttl,load) {
   pending.set(key,work);try{return await work;}finally{pending.delete(key);}
 }
 const reportsFor = env => cached(env,'reports.json',300000,async()=>parseReports(new TextDecoder().decode((await upstream('/special/48')).bytes)));
-const articleFor = (env,aid,version) => cached(env,'articles/v2/'+aid+'-'+version+'.json',1800000,async()=>convert(new TextDecoder().decode((await upstream((version==='mobile' ? '/article/' : '/articles/')+aid+'.html',version)).bytes),version));
+const articleFor = (env,aid,version) => cached(env,'articles/v3/'+aid+'-'+version+'.json',1800000,async()=>convert(new TextDecoder().decode((await upstream((version==='mobile' ? '/article/' : '/articles/')+aid+'.html',version)).bytes),version));
 function rateLimit(request) {
   const key=request.headers.get('CF-Connecting-IP') || 'local';const now=Date.now();
   if(localRate.size>5000)for(const [k,v]of localRate)if(v.until<now)localRate.delete(k);
