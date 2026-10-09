@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import worker,{parseReports,convert} from './worker.js';
 test('converts DOM and escaped hydration links for both devices',()=>{
   const input=String.raw`<a href="dongqiudi:///news/123">新闻</a><script>{url:"dongqiudi:\u002F\u002F\u002Fnews\u002F456",other:"dongqiudi:\/\/\/news\/789",user:"dongqiudi:///user/5"}</script><script src="/_nuxt/x.js"></script>`;
-  for(const version of ['pc','mobile']){const result=convert(input,version);const target=version==='pc'?'https://www.dongqiudi.com/articles/':'https://m.dongqiudi.com/article/';for(const id of ['123','456','789'])assert.ok(result.includes(target+id+'.html'));assert.ok(result.includes('dongqiudi:///user/5'));assert.ok(result.includes((version==='mobile'?'https://m.dongqiudi.com':'https://www.dongqiudi.com')+'/_nuxt/x.js'));assert.ok(!result.includes('<base'));}
+  for(const version of ['pc','mobile']){const result=convert(input,version);const target=version==='pc'?'https://www.dongqiudi.com/articles/':'/article/';for(const id of ['123','456','789'])assert.ok(result.includes(target+id+'.html'));assert.ok(result.includes('dongqiudi:///user/5'));assert.ok(result.includes((version==='mobile'?'https://m.dongqiudi.com':'https://www.dongqiudi.com')+'/_nuxt/x.js'));assert.ok(!result.includes('<base'));}
 });
 test('report timestamps use China time and deduplicate dates',()=>{
  const stamp=Math.floor(Date.parse('2026-10-01T23:00:00Z')/1000);
@@ -41,7 +41,7 @@ test('mobile articles fetch the mobile source and convert relative assets',async
   assert.equal(calls[0].url,'https://m.dongqiudi.com/article/123.html');
   assert.match(calls[0].options.headers['User-Agent'],/Mobile/);
   assert.ok(html.includes('https://m.dongqiudi.com/mobile.js'));
-  assert.ok(html.includes('https://m.dongqiudi.com/article/456.html'));
+  assert.ok(html.includes('/article/456.html'));
  }finally{globalThis.fetch=original;}
 });
 
@@ -59,4 +59,15 @@ test('article routes survive mobile URL normalization',async()=>{
   assert.deepEqual(calls,['https://m.dongqiudi.com/article/6441811.html','https://m.dongqiudi.com/article/6451239.html','https://www.dongqiudi.com/articles/6441811.html']);
   assert.equal((await worker.fetch(new Request('https://example.test/article/6441811junk'))).status,404);
  }finally{globalThis.fetch=original;}
+});
+
+test('mobile full text and linked news stay in the reader',()=>{
+ const input=String.raw`<body><a href="https://m.dongqiudi.com/article/123.html">news</a><script>{url:"https:\u002F\u002Fm.dongqiudi.com\u002Farticle\u002F456"}</script><div class="con">last paragraph</div></body>`;
+ const html=convert(input,'mobile');
+ assert.ok(html.includes('/article/123.html?zb=mobile'));
+ assert.ok(html.includes('/article/456.html?zb=mobile'));
+ assert.ok(html.includes('last paragraph'));
+ assert.ok(html.includes('max-height:none!important'));
+ assert.ok(html.includes('window.__INITIAL_STATE__.openFull=true'));
+ assert.equal(convert(input,'pc'),input);
 });
