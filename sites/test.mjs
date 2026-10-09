@@ -61,13 +61,14 @@ test('article routes survive mobile URL normalization',async()=>{
  }finally{globalThis.fetch=original;}
 });
 
-test('mobile full text and linked news stay in the reader',()=>{
+test('mobile expansion preserves original layout and linked news',()=>{
  const input=String.raw`<body><a href="https://m.dongqiudi.com/article/123.html">news</a><script>{url:"https:\u002F\u002Fm.dongqiudi.com\u002Farticle\u002F456"}</script><div class="con">last paragraph</div></body>`;
  const html=convert(input,'mobile');
  assert.ok(html.includes('/article/123.html?zb=mobile'));
  assert.ok(html.includes('/article/456.html?zb=mobile'));
  assert.ok(html.includes('last paragraph'));
- assert.ok(html.includes('max-height:none!important'));
+ assert.ok(!html.includes('zaobao-fulltext'));
+ assert.ok(!html.includes('display:none!important'));
  assert.ok(html.includes('window.__INITIAL_STATE__.openFull=true'));
  assert.equal(convert(input,'pc'),input);
 });
@@ -84,6 +85,9 @@ test('real mobile source uses the new layout with full text enabled',async()=>{
  const html=await response.text();
  assert.ok(html.includes('skin-tt'));
  assert.ok(html.includes('tt-author'));
+ assert.ok(html.includes('tt-fold folded'));
+ assert.ok(html.includes('tt-fade'));
+ assert.ok(!html.includes('zaobao-fulltext'));
  assert.ok(html.includes('window.__INITIAL_STATE__.openFull=true'));
  assert.ok(html.includes('国安3-0'));
 });
