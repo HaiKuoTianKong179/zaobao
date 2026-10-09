@@ -44,3 +44,19 @@ test('mobile articles fetch the mobile source and convert relative assets',async
   assert.ok(html.includes('https://m.dongqiudi.com/article/456.html'));
  }finally{globalThis.fetch=original;}
 });
+
+// Mobile upstream scripts normalize /article/:id.html to /article/:id.
+test('article routes survive mobile URL normalization',async()=>{
+ const original=globalThis.fetch;
+ const calls=[];
+ globalThis.fetch=async url=>{calls.push(url);return new Response('<html><body>article content</body></html>',{headers:{'Content-Type':'text/html'}});};
+ try {
+  for(const path of ['/article/6441811?zb=mobile','/article/6451239','/articles/6441811?zb=pc']) {
+   const response=await worker.fetch(new Request('https://example.test'+path,{headers:{'User-Agent':'Android Mobile'}}));
+   assert.equal(response.status,200,path);
+   assert.match(await response.text(),/article content/);
+  }
+  assert.deepEqual(calls,['https://m.dongqiudi.com/article/6441811.html','https://m.dongqiudi.com/article/6451239.html','https://www.dongqiudi.com/articles/6441811.html']);
+  assert.equal((await worker.fetch(new Request('https://example.test/article/6441811junk'))).status,404);
+ }finally{globalThis.fetch=original;}
+});
