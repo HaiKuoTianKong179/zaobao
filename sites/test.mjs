@@ -87,3 +87,17 @@ test('real mobile source uses the new layout with full text enabled',async()=>{
  assert.ok(html.includes('window.__INITIAL_STATE__.openFull=true'));
  assert.ok(html.includes('国安3-0'));
 });
+
+test('mobile comments and recommendations use read-only upstream APIs',async()=>{
+ const original=globalThis.fetch,calls=[];
+ globalThis.fetch=async url=>{calls.push(url);return Response.json({data:{comment_list:[{content:'comment'}]}});};
+ try{
+  for(const path of ['/v2/article/6458232/hot?size=30','/v2/article/relative/6458232?from=']){
+   const response=await worker.fetch(new Request('https://example.test'+path));
+   assert.equal(response.status,200);
+   assert.equal((await response.json()).data.comment_list[0].content,'comment');
+  }
+  assert.deepEqual(calls,['https://m.dongqiudi.com/v2/article/6458232/hot?size=30','https://m.dongqiudi.com/v2/article/relative/6458232?from=']);
+  assert.equal((await worker.fetch(new Request('https://example.test/v2/article/6458232/like'))).status,404);
+ }finally{globalThis.fetch=original;}
+});
